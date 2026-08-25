@@ -30,6 +30,14 @@ export async function updateCourt(req: Request, res: Response) {
   res.status(200).json({ success: true, data: court });
 }
 
+export async function updateCourtImage(req: Request, res: Response) {
+  if (!req.file) {
+    throw new AppError("No image file provided", 422);
+  }
+  const court = await courtsService.updateCourtImage(req.params.id as string, req.file);
+  res.status(200).json({ success: true, data: court });
+}
+
 export async function listBlockedSlots(req: Request, res: Response) {
   const date = typeof req.query.date === "string" ? req.query.date : undefined;
   const slots = await courtsService.listBlockedSlots(req.params.id as string, date);

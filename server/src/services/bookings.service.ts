@@ -1,7 +1,10 @@
-import { randomInt } from "crypto";
 import { supabase } from "../config/supabase.js";
 import { AppError } from "../utils/app-error.js";
+import { generateReferenceNumber } from "../utils/reference-number.js";
 import { getCourtById, listBlockedSlots } from "./courts.service.js";
+import * as loyaltyService from "./loyalty.service.js";
+import { getUserById } from "./users.service.js";
+import { sendBookingConfirmationEmail } from "./email.service.js";
 import type { CreateBookingInput } from "../validators/bookings.validator.js";
 
 export type BookingStatus =
@@ -54,18 +57,6 @@ function mapBooking(row: BookingRow): Booking {
     status: row.status,
     createdAt: row.created_at,
   };
-}
-
-// Excludes visually ambiguous characters (0/O, 1/I/L) so a printed or
-// handwritten reference stays unambiguous at check-in.
-const REFERENCE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-function generateReferenceNumber(): string {
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += REFERENCE_CHARS[randomInt(REFERENCE_CHARS.length)];
-  }
-  return `DH-${code}`;
 }
 
 export interface AdminBooking extends Booking {
@@ -143,7 +134,15 @@ export async function createBooking(
   }
 
   const durationHours = input.endHour - input.startHour;
-  const totalAmount = Math.round(court.pricePerHour * durationHours * 100) / 100;
+  let totalAmount = Math.round(court.pricePerHour * durationHours * 100) / 100;
+
+  const usingReward = Boolean(input.rewardId);
+  if (usingReward) {
+    if (durationHours !== 1) {
+      throw new AppError("Free-hour rewards can only be used for a 1-hour booking", 422);
+    }
+    totalAmount = 0;
+  }
 
   // Collision on the reference number itself is vanishingly unlikely (32^6
   // combinations) but retried a few times with a fresh code rather than
@@ -155,16 +154,47 @@ export async function createBooking(
       .insert({
         user_id: userId,
         court_id: input.courtId,
-        reference_number: generateReferenceNumber(),
+        reference_number: generateReferenceNumber("DH"),
         booking_date: input.bookingDate,
         start_hour: input.startHour,
         end_hour: input.endHour,
         total_amount: totalAmount,
+        // A reward-backed booking skips payment entirely — it's confirmed
+        // the moment the reward is actually claimed below.
+        ...(usingReward ? { status: "CONFIRMED" } : {}),
       })
       .select(BOOKING_COLUMNS)
       .single();
 
-    if (!error) return mapBooking(data);
+    if (!error) {
+      const booking = mapBooking(data);
+
+      if (usingReward) {
+        try {
+          await loyaltyService.useRewardForBooking(userId, input.rewardId!, booking.id);
+        } catch (err) {
+          // The reward got claimed by something else between the request
+          // arriving and now (e.g. a duplicate submit) — cancel the free
+          // booking rather than let it stand unpaid with no reward behind
+          // it.
+          await supabase
+            .from("court_bookings")
+            .update({ status: "CANCELLED" })
+            .eq("id", booking.id);
+          throw err;
+        }
+
+        // A reward booking never goes through payments.service's
+        // reconcile flow (there's no payment), so the confirmation
+        // email — including the check-in QR code — has to be sent from
+        // here instead. Best-effort: sendBookingConfirmationEmail
+        // already catches and logs its own errors.
+        const customer = await getUserById(userId);
+        await sendBookingConfirmationEmail(booking, court, customer.email, customer.fullName);
+      }
+
+      return booking;
+    }
 
     // Postgres exclusion-constraint violation — another booking already
     // holds an overlapping range for this court/date. This is the real

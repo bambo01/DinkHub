@@ -19,6 +19,7 @@ export interface Court {
   defaultOpenHour: number;
   defaultCloseHour: number;
   pricePerHour: number;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,9 +45,13 @@ interface CourtRow {
   default_close_hour: number;
   // PostgREST returns `numeric` columns as strings to avoid precision loss.
   price_per_hour: string;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const COURT_COLUMNS =
+  "id, name, type, location, description, status, default_open_hour, default_close_hour, price_per_hour, image_url, created_at, updated_at";
 
 interface BlockedSlotRow {
   id: string;
@@ -69,6 +74,7 @@ function mapCourt(row: CourtRow): Court {
     defaultOpenHour: row.default_open_hour,
     defaultCloseHour: row.default_close_hour,
     pricePerHour: Number(row.price_per_hour),
+    imageUrl: row.image_url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -89,9 +95,7 @@ function mapBlockedSlot(row: BlockedSlotRow): BlockedSlot {
 export async function listCourts(): Promise<Court[]> {
   const { data, error } = await supabase
     .from("courts")
-    .select(
-      "id, name, type, location, description, status, default_open_hour, default_close_hour, price_per_hour, created_at, updated_at",
-    )
+    .select(COURT_COLUMNS)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -104,9 +108,7 @@ export async function listCourts(): Promise<Court[]> {
 export async function getCourtById(id: string): Promise<Court> {
   const { data, error } = await supabase
     .from("courts")
-    .select(
-      "id, name, type, location, description, status, default_open_hour, default_close_hour, price_per_hour, created_at, updated_at",
-    )
+    .select(COURT_COLUMNS)
     .eq("id", id)
     .single();
 
@@ -129,9 +131,7 @@ export async function createCourt(input: CreateCourtInput): Promise<Court> {
       default_close_hour: input.defaultCloseHour,
       price_per_hour: input.pricePerHour,
     })
-    .select(
-      "id, name, type, location, description, status, default_open_hour, default_close_hour, price_per_hour, created_at, updated_at",
-    )
+    .select(COURT_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -172,13 +172,53 @@ export async function updateCourt(
     .from("courts")
     .update(patch)
     .eq("id", id)
-    .select(
-      "id, name, type, location, description, status, default_open_hour, default_close_hour, price_per_hour, created_at, updated_at",
-    )
+    .select(COURT_COLUMNS)
     .single();
 
   if (error || !data) {
     throw new AppError("Failed to update court", 500);
+  }
+
+  return mapCourt(data);
+}
+
+export async function updateCourtImage(
+  id: string,
+  file: Express.Multer.File,
+): Promise<Court> {
+  // Confirm the court exists so a bad id 404s instead of uploading an
+  // orphaned image no court will ever reference.
+  await getCourtById(id);
+
+  // Fixed path per court (no extension) — every upload overwrites the same
+  // storage object instead of accumulating orphaned files from a previous
+  // upload in a different format.
+  const path = `courts/${id}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("listing-images")
+    .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+
+  if (uploadError) {
+    throw new AppError("Failed to upload image", 500);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("listing-images").getPublicUrl(path);
+  // Cache-bust so the browser/CDN doesn't keep serving the previous image
+  // from this same URL after a re-upload.
+  const imageUrl = `${publicUrl}?v=${Date.now()}`;
+
+  const { data, error } = await supabase
+    .from("courts")
+    .update({ image_url: imageUrl })
+    .eq("id", id)
+    .select(COURT_COLUMNS)
+    .single();
+
+  if (error || !data) {
+    throw new AppError("Failed to save image", 500);
   }
 
   return mapCourt(data);

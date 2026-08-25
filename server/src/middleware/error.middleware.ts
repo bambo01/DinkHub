@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 
 import { env } from "../config/env.js";
@@ -18,6 +19,13 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
       success: false,
       message: err.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
     });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "Image must be 5MB or smaller" : err.message;
+    res.status(422).json({ success: false, message });
     return;
   }
 

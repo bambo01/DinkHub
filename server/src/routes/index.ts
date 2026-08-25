@@ -4,6 +4,9 @@ import usersRoutes from "./users.routes.js";
 import courtsRoutes from "./courts.routes.js";
 import bookingsRoutes from "./bookings.routes.js";
 import paymentsRoutes from "./payments.routes.js";
+import openPlayRoutes from "./open-play.routes.js";
+import verifyRoutes from "./verify.routes.js";
+import loyaltyRoutes from "./loyalty.routes.js";
 
 const router = Router();
 
@@ -19,5 +22,8 @@ router.use("/users", usersRoutes);
 router.use("/courts", courtsRoutes);
 router.use("/bookings", bookingsRoutes);
 router.use("/payments", paymentsRoutes);
+router.use("/open-play", openPlayRoutes);
+router.use("/verify", verifyRoutes);
+router.use("/loyalty", loyaltyRoutes);
 
 export default router;

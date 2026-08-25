@@ -5,13 +5,17 @@ import { AppError } from "../utils/app-error.js";
 import { getBookingById, markBookingConfirmed } from "./bookings.service.js";
 import { getCourtById } from "./courts.service.js";
 import { getUserById } from "./users.service.js";
-import { sendBookingConfirmationEmail } from "./email.service.js";
+import { sendBookingConfirmationEmail, sendOpenPlayConfirmationEmail } from "./email.service.js";
+import * as openPlayService from "./open-play.service.js";
+import * as openPlayBookingsService from "./open-play-bookings.service.js";
+import * as loyaltyService from "./loyalty.service.js";
 
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "EXPIRED" | "REFUNDED";
 
 export interface Payment {
   id: string;
-  bookingId: string;
+  bookingId: string | null;
+  openPlayBookingId: string | null;
   amount: number;
   status: PaymentStatus;
   paymongoCheckoutSessionId: string;
@@ -20,7 +24,8 @@ export interface Payment {
 
 interface PaymentRow {
   id: string;
-  booking_id: string;
+  booking_id: string | null;
+  open_play_booking_id: string | null;
   // PostgREST returns `numeric` columns as strings to avoid precision loss.
   amount: string;
   status: PaymentStatus;
@@ -28,12 +33,14 @@ interface PaymentRow {
   created_at: string;
 }
 
-const PAYMENT_COLUMNS = "id, booking_id, amount, status, paymongo_checkout_session_id, created_at";
+const PAYMENT_COLUMNS =
+  "id, booking_id, open_play_booking_id, amount, status, paymongo_checkout_session_id, created_at";
 
 function mapPayment(row: PaymentRow): Payment {
   return {
     id: row.id,
     bookingId: row.booking_id,
+    openPlayBookingId: row.open_play_booking_id,
     amount: Number(row.amount),
     status: row.status,
     paymongoCheckoutSessionId: row.paymongo_checkout_session_id,
@@ -75,12 +82,17 @@ function mapAdminPayment(row: AdminPaymentRow): AdminPayment {
   };
 }
 
+// Scoped to court-booking payments only for now — Open Play payments exist
+// (see createOpenPlayCheckoutSession below) but don't have an admin view
+// yet, so they're excluded here rather than shown with blank court/date
+// columns.
 export async function listPayments(): Promise<AdminPayment[]> {
   const { data, error } = await supabase
     .from("payments")
     .select(
       `${PAYMENT_COLUMNS}, court_bookings(reference_number, booking_date, start_hour, end_hour, courts(name), users(full_name, email))`,
     )
+    .not("booking_id", "is", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -173,6 +185,116 @@ export async function createCheckoutSession(
   return { checkoutUrl, paymentId: mapPayment(data).id };
 }
 
+export async function createOpenPlayCheckoutSession(
+  userId: string,
+  openPlayBookingId: string,
+): Promise<{ checkoutUrl: string; paymentId: string }> {
+  const booking = await openPlayBookingsService.getBookingById(openPlayBookingId);
+
+  if (booking.userId !== userId) {
+    // Don't leak that a booking with this id exists for someone else.
+    throw new AppError("Booking not found", 404);
+  }
+
+  if (booking.status !== "PENDING_PAYMENT") {
+    throw new AppError("This reservation is not awaiting payment", 422);
+  }
+
+  const activity = await openPlayService.getActivityById(booking.activityId);
+  const amountCentavos = Math.round(booking.amount * 100);
+
+  let response: PaymongoCheckoutSessionResponse;
+  try {
+    const result = await paymongo.post<PaymongoCheckoutSessionResponse>(
+      "/checkout_sessions",
+      {
+        data: {
+          attributes: {
+            line_items: [
+              {
+                name: `${activity.title} — Open Play slot${booking.slots > 1 ? `s (${booking.slots})` : ""}`,
+                description: `${activity.eventDate}, ${activity.startHour}:00–${activity.endHour}:00`,
+                amount: amountCentavos,
+                currency: "PHP",
+                quantity: 1,
+              },
+            ],
+            payment_method_types: ["card", "gcash", "paymaya"],
+            description: `DinkHub open play – ${activity.title}`,
+            success_url: `${env.FRONTEND_URL}/open-play/${activity.id}?status=success`,
+            cancel_url: `${env.FRONTEND_URL}/open-play/${activity.id}?status=cancelled`,
+            send_email_receipt: false,
+            show_line_items: true,
+            metadata: { openPlayBookingId: booking.id },
+          },
+        },
+      },
+    );
+    response = result.data;
+  } catch (err) {
+    console.error("PayMongo checkout session creation failed:", err);
+    throw new AppError("Failed to start payment. Please try again.", 502);
+  }
+
+  const checkoutSessionId = response.data.id;
+  const checkoutUrl = response.data.attributes.checkout_url;
+
+  const { data, error } = await supabase
+    .from("payments")
+    .insert({
+      open_play_booking_id: booking.id,
+      amount: booking.amount,
+      paymongo_checkout_session_id: checkoutSessionId,
+    })
+    .select(PAYMENT_COLUMNS)
+    .single();
+
+  if (error || !data) {
+    throw new AppError("Failed to record payment", 500);
+  }
+
+  return { checkoutUrl, paymentId: mapPayment(data).id };
+}
+
+async function reconcileCourtBookingPayment(bookingId: string): Promise<void> {
+  await markBookingConfirmed(bookingId);
+
+  // Best-effort — a failure here shouldn't undo the confirmation that just
+  // succeeded above. sendBookingConfirmationEmail already catches and logs
+  // its own errors internally.
+  const confirmedBooking = await getBookingById(bookingId);
+  const [court, customer] = await Promise.all([
+    getCourtById(confirmedBooking.courtId),
+    getUserById(confirmedBooking.userId),
+  ]);
+  await sendBookingConfirmationEmail(confirmedBooking, court, customer.email, customer.fullName);
+
+  // One sticker per calendar play-day, awarded only for a real paid
+  // booking — the (user_id, earned_date) unique constraint makes this a
+  // no-op if today's sticker was already earned by an earlier booking.
+  await loyaltyService.awardStickerForBooking(
+    confirmedBooking.userId,
+    confirmedBooking.bookingDate,
+    confirmedBooking.id,
+  );
+}
+
+async function reconcileOpenPlayBookingPayment(openPlayBookingId: string): Promise<void> {
+  await openPlayBookingsService.markBookingConfirmed(openPlayBookingId);
+
+  const confirmedBooking = await openPlayBookingsService.getBookingById(openPlayBookingId);
+  const [activity, customer] = await Promise.all([
+    openPlayService.getActivityById(confirmedBooking.activityId),
+    getUserById(confirmedBooking.userId),
+  ]);
+  await sendOpenPlayConfirmationEmail(
+    confirmedBooking,
+    activity,
+    customer.email,
+    customer.fullName,
+  );
+}
+
 // Called from the webhook after signature verification confirms a
 // `checkout_session.payment.paid` event genuinely came from PayMongo. The
 // event payload only identifies *which* session to look at — the actual
@@ -219,20 +341,9 @@ export async function reconcileCheckoutSession(
 
   if (!updated) return;
 
-  await markBookingConfirmed(payment.bookingId);
-
-  // Best-effort — a failure here shouldn't undo the confirmation that just
-  // succeeded above. sendBookingConfirmationEmail already catches and logs
-  // its own errors internally.
-  const confirmedBooking = await getBookingById(payment.bookingId);
-  const [court, customer] = await Promise.all([
-    getCourtById(confirmedBooking.courtId),
-    getUserById(confirmedBooking.userId),
-  ]);
-  await sendBookingConfirmationEmail(
-    confirmedBooking,
-    court,
-    customer.email,
-    customer.fullName,
-  );
+  if (payment.bookingId) {
+    await reconcileCourtBookingPayment(payment.bookingId);
+  } else if (payment.openPlayBookingId) {
+    await reconcileOpenPlayBookingPayment(payment.openPlayBookingId);
+  }
 }

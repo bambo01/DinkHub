@@ -1,12 +1,24 @@
 import type { Request, Response } from "express";
 import { env } from "../config/env.js";
 import * as paymentsService from "../services/payments.service.js";
-import { createCheckoutSessionSchema } from "../validators/payments.validator.js";
+import {
+  createCheckoutSessionSchema,
+  createOpenPlayCheckoutSessionSchema,
+} from "../validators/payments.validator.js";
 import { verifyPaymongoSignature } from "../utils/paymongo-signature.js";
 
 export async function createCheckoutSession(req: Request, res: Response) {
   const input = createCheckoutSessionSchema.parse(req.body);
   const result = await paymentsService.createCheckoutSession(req.userId!, input.bookingId);
+  res.status(201).json({ success: true, data: result });
+}
+
+export async function createOpenPlayCheckoutSession(req: Request, res: Response) {
+  const input = createOpenPlayCheckoutSessionSchema.parse(req.body);
+  const result = await paymentsService.createOpenPlayCheckoutSession(
+    req.userId!,
+    input.openPlayBookingId,
+  );
   res.status(201).json({ success: true, data: result });
 }
 

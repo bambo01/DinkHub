@@ -8,9 +8,11 @@ import {
   listBookedHours,
   listCourts,
   updateCourt,
+  updateCourtImage,
 } from "../controllers/courts.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
+import { imageUpload } from "../middleware/upload.middleware.js";
 
 const router = Router();
 
@@ -23,6 +25,13 @@ router.get("/:id/booked-hours", listBookedHours);
 // Admin only — creating/editing courts and managing schedule overrides.
 router.post("/", requireAuth, requireAdmin, createCourt);
 router.patch("/:id", requireAuth, requireAdmin, updateCourt);
+router.patch(
+  "/:id/image",
+  requireAuth,
+  requireAdmin,
+  imageUpload.single("image"),
+  updateCourtImage,
+);
 router.post("/:id/blocked-slots", requireAuth, requireAdmin, createBlockedSlot);
 router.delete("/:id/blocked-slots/:slotId", requireAuth, requireAdmin, deleteBlockedSlot);
 
