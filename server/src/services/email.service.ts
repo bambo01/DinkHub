@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { resend } from "../config/resend.js";
+import { gmailTransport } from "../config/gmail.js";
 import { env } from "../config/env.js";
 import { formatHour } from "../utils/format-hour.js";
 import type { Booking } from "./bookings.service.js";
@@ -20,9 +20,9 @@ export async function sendBookingConfirmationEmail(
   toEmail: string,
   toName: string | null,
 ): Promise<void> {
-  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
+  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
     console.log(
-      `Email not configured (RESEND_API_KEY/EMAIL_FROM unset) — skipping confirmation email for booking ${booking.referenceNumber}`,
+      `Email not configured (GMAIL_USER/GMAIL_APP_PASSWORD unset) — skipping confirmation email for booking ${booking.referenceNumber}`,
     );
     return;
   }
@@ -56,8 +56,8 @@ export async function sendBookingConfirmationEmail(
       </div>
     `;
 
-    await resend.post("/emails", {
-      from: env.EMAIL_FROM,
+    await gmailTransport.sendMail({
+      from: `DinkHub <${env.GMAIL_USER}>`,
       to: toEmail,
       subject: `Booking Confirmed — ${booking.referenceNumber}`,
       html,
@@ -65,7 +65,8 @@ export async function sendBookingConfirmationEmail(
         {
           filename: "booking-qr.png",
           content: qrBase64,
-          content_id: "booking-qr",
+          encoding: "base64",
+          cid: "booking-qr",
         },
       ],
     });
@@ -86,9 +87,9 @@ export async function sendOpenPlayConfirmationEmail(
   toEmail: string,
   toName: string | null,
 ): Promise<void> {
-  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
+  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
     console.log(
-      `Email not configured (RESEND_API_KEY/EMAIL_FROM unset) — skipping confirmation email for open play booking ${booking.referenceNumber}`,
+      `Email not configured (GMAIL_USER/GMAIL_APP_PASSWORD unset) — skipping confirmation email for open play booking ${booking.referenceNumber}`,
     );
     return;
   }
@@ -127,8 +128,8 @@ export async function sendOpenPlayConfirmationEmail(
       </div>
     `;
 
-    await resend.post("/emails", {
-      from: env.EMAIL_FROM,
+    await gmailTransport.sendMail({
+      from: `DinkHub <${env.GMAIL_USER}>`,
       to: toEmail,
       subject: `You're In — ${booking.referenceNumber}`,
       html,
@@ -136,7 +137,8 @@ export async function sendOpenPlayConfirmationEmail(
         {
           filename: "open-play-qr.png",
           content: qrBase64,
-          content_id: "open-play-qr",
+          encoding: "base64",
+          cid: "open-play-qr",
         },
       ],
     });

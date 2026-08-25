@@ -15,9 +15,11 @@ const envSchema = z.object({
   PAYMONGO_WEBHOOK_SECRET: z.string().min(1),
 
   // Optional — booking confirmation emails are skipped (not an error) when
-  // these aren't set. See email.service.ts.
-  RESEND_API_KEY: z.string().default(""),
-  EMAIL_FROM: z.string().default(""),
+  // these aren't set. See email.service.ts. GMAIL_APP_PASSWORD is a Gmail
+  // App Password (Google Account > Security > App passwords), not the
+  // account's regular login password.
+  GMAIL_USER: z.string().default(""),
+  GMAIL_APP_PASSWORD: z.string().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);
