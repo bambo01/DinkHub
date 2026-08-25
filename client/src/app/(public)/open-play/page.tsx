@@ -4,6 +4,11 @@ import { apiFetch } from "@/lib/api";
 import { formatHour, toDateKey } from "@/lib/mock-courts";
 import { skillLevelLabel, type Activity } from "@/types/openPlay";
 
+// Session availability changes constantly (new activities, spots filling
+// up) — always render fresh from the API instead of serving a stale
+// build-time snapshot from Vercel's static cache.
+export const dynamic = "force-dynamic";
+
 export default async function OpenPlayPage() {
   let activities: Activity[] = [];
 

@@ -11,6 +11,11 @@ import {
 import { ApiError, apiFetch } from "@/lib/api";
 import { formatHour } from "@/lib/mock-courts";
 
+// A booking's status (e.g. pending -> confirmed) can change after this page
+// is first generated — always render fresh instead of serving a stale
+// cached snapshot for a given reference number.
+export const dynamic = "force-dynamic";
+
 type VerifyResult =
   | {
       type: "COURT";

@@ -3,6 +3,11 @@ import { ApiError, apiFetch } from "@/lib/api";
 import type { Court } from "@/types/court";
 import { CourtDetail } from "@/components/courts/CourtDetail";
 
+// Availability/booked-hours changes constantly — always render fresh from
+// the API instead of serving a stale build-time snapshot from Vercel's
+// static cache.
+export const dynamic = "force-dynamic";
+
 export default async function CourtPage(
   props: PageProps<"/courts/[courtId]">,
 ) {

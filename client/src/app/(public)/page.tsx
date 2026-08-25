@@ -7,6 +7,10 @@ import { VerifyBooking } from "@/components/home/VerifyBooking";
 import { Contact } from "@/components/home/Contact";
 import { Developer } from "@/components/home/Developer";
 
+// Courts and Events pull live data from the API — always render fresh
+// instead of serving a stale build-time snapshot from Vercel's static cache.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <>

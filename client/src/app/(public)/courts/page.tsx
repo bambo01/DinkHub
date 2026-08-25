@@ -6,6 +6,11 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { apiFetch } from "@/lib/api";
 import { courtTypeLabel, type Court } from "@/types/court";
 
+// Court roster/status changes from the admin panel — always render fresh
+// from the API instead of serving a stale build-time snapshot from
+// Vercel's static cache.
+export const dynamic = "force-dynamic";
+
 export default async function CourtsPage() {
   let courts: Court[] = [];
 
