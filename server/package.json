@@ -25,10 +25,10 @@
     "nodemailer": "^9.0.5",
     "qrcode": "^1.5.4",
     "typescript": "^5.0.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "@types/nodemailer": "^8.0.1"
   },
   "devDependencies": {
-    "@types/nodemailer": "^8.0.1",
     "tsx": "^4.0.0"
   }
 }
