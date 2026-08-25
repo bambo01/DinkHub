@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Environment variables — never commit secrets. .env.example files are
+# templates and should stay tracked.
+.env
+.env.local
+.env.*.local
+
+# Claude Code local config (skills, settings, memory) — local tooling,
+# not meant to be shared via the repo.
+.claude/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# TypeScript build output
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Testing
+coverage/
+
+# Vercel
+.vercel
