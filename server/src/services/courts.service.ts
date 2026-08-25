@@ -182,6 +182,47 @@ export async function updateCourt(
   return mapCourt(data);
 }
 
+export async function deleteCourt(id: string): Promise<void> {
+  // Confirm the court exists so a bad id 404s with a clear message.
+  await getCourtById(id);
+
+  const { count: bookingCount, error: bookingError } = await supabase
+    .from("court_bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("court_id", id);
+
+  if (bookingError) {
+    throw new AppError("Failed to check court bookings", 500);
+  }
+  if (bookingCount) {
+    throw new AppError(
+      "This court has booking history and can't be deleted. Set it to Inactive instead.",
+      409,
+    );
+  }
+
+  const { count: activityCount, error: activityError } = await supabase
+    .from("open_play_activity_courts")
+    .select("court_id", { count: "exact", head: true })
+    .eq("court_id", id);
+
+  if (activityError) {
+    throw new AppError("Failed to check open play activities", 500);
+  }
+  if (activityCount) {
+    throw new AppError(
+      "This court is linked to an Open Play activity and can't be deleted. Remove it from that activity first, or set it to Inactive.",
+      409,
+    );
+  }
+
+  const { error } = await supabase.from("courts").delete().eq("id", id);
+
+  if (error) {
+    throw new AppError("Failed to delete court", 500);
+  }
+}
+
 export async function updateCourtImage(
   id: string,
   file: Express.Multer.File,

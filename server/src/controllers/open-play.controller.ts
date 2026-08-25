@@ -38,6 +38,11 @@ export async function updateActivity(req: Request, res: Response) {
   res.status(200).json({ success: true, data: activity });
 }
 
+export async function deleteActivity(req: Request, res: Response) {
+  await openPlayService.deleteActivity(req.params.id as string);
+  res.status(200).json({ success: true, data: null });
+}
+
 export async function updateActivityImage(req: Request, res: Response) {
   if (!req.file) {
     throw new AppError("No image file provided", 422);

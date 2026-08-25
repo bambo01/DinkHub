@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiSave, FiUsers } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiTrash2, FiUsers } from "react-icons/fi";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -38,6 +38,8 @@ export default function AdminOpenPlayDetailPage() {
   const [saved, setSaved] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // setIsLoading/setError run synchronously before the fetch kicks off, which
   // react-hooks/set-state-in-effect flags on principle — but the loading
@@ -131,6 +133,28 @@ export default function AdminOpenPlayDetailPage() {
       setSaveError(err instanceof ApiError ? err.message : "Failed to save changes");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!activity) return;
+    if (
+      !window.confirm(
+        `Delete "${activity.title}"? This can't be undone. Activities with bookings can't be deleted — set the status to Cancelled instead.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeleteError(null);
+    setIsDeleting(true);
+
+    try {
+      await apiFetch(`/open-play/${id}`, accessToken, { method: "DELETE" });
+      router.push("/admin/open-play");
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Failed to delete activity");
+      setIsDeleting(false);
     }
   }
 
@@ -349,6 +373,18 @@ export default function AdminOpenPlayDetailPage() {
             >
               <FiSave className="h-4 w-4" />
               {isSaving ? "Saving…" : "Save Changes"}
+            </button>
+
+            {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              <FiTrash2 className="h-4 w-4" />
+              {isDeleting ? "Deleting…" : "Delete Activity"}
             </button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createActivity,
+  deleteActivity,
   getActivity,
   getMyBooking,
   getParticipants,
@@ -30,6 +31,7 @@ router.get("/:id/my-booking", requireAuth, getMyBooking);
 // (all statuses) for one.
 router.post("/", requireAuth, requireAdmin, createActivity);
 router.patch("/:id", requireAuth, requireAdmin, updateActivity);
+router.delete("/:id", requireAuth, requireAdmin, deleteActivity);
 router.patch(
   "/:id/image",
   requireAuth,

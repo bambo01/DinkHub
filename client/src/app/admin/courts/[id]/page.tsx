@@ -35,6 +35,8 @@ export default function AdminCourtDetailPage() {
   const [saved, setSaved] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Per-date blocked slots.
   const [blockedDate, setBlockedDate] = useState(toDateKey(today));
@@ -162,6 +164,28 @@ export default function AdminCourtDetailPage() {
       setSlotsError(err instanceof ApiError ? err.message : "Failed to add blocked slot");
     } finally {
       setIsAddingSlot(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!court) return;
+    if (
+      !window.confirm(
+        `Delete "${court.name}"? This can't be undone. Courts with booking history or Open Play activities can't be deleted — set the status to Inactive instead.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeleteError(null);
+    setIsDeleting(true);
+
+    try {
+      await apiFetch(`/courts/${id}`, accessToken, { method: "DELETE" });
+      router.push("/admin/courts");
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Failed to delete court");
+      setIsDeleting(false);
     }
   }
 
@@ -356,6 +380,18 @@ export default function AdminCourtDetailPage() {
               >
                 <FiSave className="h-4 w-4" />
                 {isSaving ? "Saving…" : "Save Changes"}
+              </button>
+
+              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                <FiTrash2 className="h-4 w-4" />
+                {isDeleting ? "Deleting…" : "Delete Court"}
               </button>
             </div>
           </form>

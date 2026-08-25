@@ -317,6 +317,35 @@ export async function updateActivity(
   return activity;
 }
 
+export async function deleteActivity(id: string): Promise<void> {
+  // Confirm the activity exists so a bad id 404s with a clear message.
+  await getActivityById(id);
+
+  const { count, error: bookingError } = await supabase
+    .from("open_play_bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("activity_id", id);
+
+  if (bookingError) {
+    throw new AppError("Failed to check open play bookings", 500);
+  }
+  if (count) {
+    throw new AppError(
+      "This activity has bookings and can't be deleted. Set it to Cancelled instead.",
+      409,
+    );
+  }
+
+  // court_blocked_slots and open_play_activity_courts both reference this
+  // activity with ON DELETE CASCADE, so removing the activity row cleans
+  // those up automatically.
+  const { error } = await supabase.from("open_play_activities").delete().eq("id", id);
+
+  if (error) {
+    throw new AppError("Failed to delete open play activity", 500);
+  }
+}
+
 export async function updateActivityImage(
   id: string,
   file: Express.Multer.File,

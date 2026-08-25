@@ -3,6 +3,7 @@ import {
   createBlockedSlot,
   createCourt,
   deleteBlockedSlot,
+  deleteCourt,
   getCourt,
   listBlockedSlots,
   listBookedHours,
@@ -25,6 +26,7 @@ router.get("/:id/booked-hours", listBookedHours);
 // Admin only — creating/editing courts and managing schedule overrides.
 router.post("/", requireAuth, requireAdmin, createCourt);
 router.patch("/:id", requireAuth, requireAdmin, updateCourt);
+router.delete("/:id", requireAuth, requireAdmin, deleteCourt);
 router.patch(
   "/:id/image",
   requireAuth,

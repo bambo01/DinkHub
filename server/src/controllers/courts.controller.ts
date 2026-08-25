@@ -30,6 +30,11 @@ export async function updateCourt(req: Request, res: Response) {
   res.status(200).json({ success: true, data: court });
 }
 
+export async function deleteCourt(req: Request, res: Response) {
+  await courtsService.deleteCourt(req.params.id as string);
+  res.status(200).json({ success: true, data: null });
+}
+
 export async function updateCourtImage(req: Request, res: Response) {
   if (!req.file) {
     throw new AppError("No image file provided", 422);
