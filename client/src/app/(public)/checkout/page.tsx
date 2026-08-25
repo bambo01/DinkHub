@@ -2,13 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiAlertTriangle,
   FiArrowLeft,
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiGift,
   FiLogIn,
   FiMapPin,
   FiUserPlus,
@@ -20,9 +21,11 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { formatHour } from "@/lib/mock-courts";
 import { courtTypeLabel, type Court } from "@/types/court";
 import type { Booking } from "@/types/booking";
+import type { LoyaltyStatus } from "@/types/loyalty";
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user, accessToken, isLoading: authLoading } = useAuth();
 
   const courtId = searchParams.get("courtId") ?? "";
@@ -47,6 +50,8 @@ function CheckoutContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [loyaltyStatus, setLoyaltyStatus] = useState<LoyaltyStatus | null>(null);
+  const [useReward, setUseReward] = useState(false);
 
   // setIsLoadingCourt/setLoadError run synchronously before the fetch kicks
   // off, which react-hooks/set-state-in-effect flags on principle — but the
@@ -68,10 +73,23 @@ function CheckoutContent() {
       )
       .finally(() => setIsLoadingCourt(false));
   }, [courtId, isValidSelection]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setLoyaltyStatus(null);
+      return;
+    }
+    apiFetch<LoyaltyStatus>("/loyalty/me", accessToken)
+      .then(setLoyaltyStatus)
+      .catch(() => setLoyaltyStatus(null));
+  }, [accessToken]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const durationHours = isValidSelection ? end - start + 1 : 0;
-  const totalAmount = court ? court.pricePerHour * durationHours : 0;
+  const availableReward = loyaltyStatus?.availableRewards[0] ?? null;
+  const canUseReward = durationHours === 1 && Boolean(availableReward);
+  const isRewardApplied = canUseReward && useReward;
+  const totalAmount = isRewardApplied ? 0 : court ? court.pricePerHour * durationHours : 0;
   const loginRedirect = `/checkout?${searchParams.toString()}`;
 
   async function startPayment(bookingId: string) {
@@ -105,8 +123,17 @@ function CheckoutContent() {
           bookingDate: date,
           startHour: start,
           endHour: end + 1,
+          ...(isRewardApplied && availableReward ? { rewardId: availableReward.id } : {}),
         }),
       });
+
+      // A reward-backed booking comes back already CONFIRMED — there's no
+      // payment to start, so skip straight to the confirmation page.
+      if (created.status === "CONFIRMED") {
+        router.push(`/bookings/confirmation?bookingId=${created.id}`);
+        return;
+      }
+
       setBooking(created);
       await startPayment(created.id);
     } catch (err) {
@@ -170,14 +197,36 @@ function CheckoutContent() {
             </p>
           </div>
 
+          {canUseReward && (
+            <label className="mt-6 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-secondary">
+              <input
+                type="checkbox"
+                checked={useReward}
+                onChange={(event) => setUseReward(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <FiGift className="h-4 w-4 text-primary" />
+              Use my free hour reward
+            </label>
+          )}
+
           <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
             <span className="text-sm text-gray-600">
               ₱{court.pricePerHour.toFixed(2)} &times; {durationHours} hr
               {durationHours > 1 ? "s" : ""}
             </span>
-            <span className="text-lg font-bold text-secondary">
-              ₱{totalAmount.toFixed(2)}
-            </span>
+            {isRewardApplied ? (
+              <span className="flex items-center gap-2">
+                <span className="text-sm text-gray-400 line-through">
+                  ₱{(court.pricePerHour * durationHours).toFixed(2)}
+                </span>
+                <span className="text-lg font-bold text-primary">FREE</span>
+              </span>
+            ) : (
+              <span className="text-lg font-bold text-secondary">
+                ₱{totalAmount.toFixed(2)}
+              </span>
+            )}
           </div>
 
           {booking && submitError ? (
@@ -241,7 +290,11 @@ function CheckoutContent() {
                 onClick={handleConfirm}
                 className="mt-6 w-full"
               >
-                {isSubmitting ? "Booking…" : "Confirm Booking"}
+                {isSubmitting
+                  ? "Booking…"
+                  : isRewardApplied
+                    ? "Redeem Free Hour"
+                    : "Confirm Booking"}
               </Button>
             </>
           )}

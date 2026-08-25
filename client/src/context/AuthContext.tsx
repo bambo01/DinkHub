@@ -14,6 +14,7 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string | null;
+  avatarUrl: string | null;
   role: UserRole;
 }
 
@@ -28,6 +29,7 @@ interface AuthContextValue {
     password: string,
   ) => Promise<AuthUser>;
   logout: () => void;
+  updateUser: (user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -133,9 +135,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  // Used after a profile change (avatar upload, etc.) that returns a fresh
+  // user object but doesn't involve a new session/token.
+  function updateUser(nextUser: AuthUser) {
+    setUser(nextUser);
+    if (accessToken) {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ user: nextUser, accessToken }),
+      );
+    }
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, isLoading, login, register, logout }}
+      value={{ user, accessToken, isLoading, login, register, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>

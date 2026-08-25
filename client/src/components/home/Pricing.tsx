@@ -1,9 +1,12 @@
 import { FiCheck, FiClock, FiUsers } from "react-icons/fi";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { apiFetch } from "@/lib/api";
+import type { Court } from "@/types/court";
+import type { Activity } from "@/types/openPlay";
 
 interface PricingPlan {
   name: string;
-  price: number;
+  price: number | null;
   unit: string;
   icon: typeof FiClock;
   description: string;
@@ -12,38 +15,60 @@ interface PricingPlan {
   cta: string;
 }
 
-const plans: PricingPlan[] = [
-  {
-    name: "Court Booking",
-    price: 500,
-    unit: "/hour",
-    icon: FiClock,
-    description: "Reserve a court for you and your group.",
-    features: [
-      "Book any available court",
-      "Choose your preferred time slot",
-      "Instant booking confirmation",
-    ],
-    href: "/courts",
-    cta: "Book a Court",
-  },
-  {
-    name: "Open Play",
-    price: 250,
-    unit: "/session",
-    icon: FiUsers,
-    description: "Drop in and play with the community.",
-    features: [
-      "Join any scheduled Open Play session",
-      "Meet and play with other members",
-      "All skill levels welcome",
-    ],
-    href: "/open-play",
-    cta: "Join Open Play",
-  },
-];
+export async function Pricing() {
+  let courtPrice: number | null = null;
+  let openPlayPrice: number | null = null;
 
-export function Pricing() {
+  try {
+    const courts = await apiFetch<Court[]>("/courts", null);
+    const prices = courts
+      .filter((court) => court.status === "ACTIVE")
+      .map((court) => court.pricePerHour);
+    if (prices.length > 0) courtPrice = Math.min(...prices);
+  } catch {
+    // Leave courtPrice null — the card falls back to a no-price state
+    // rather than breaking the whole homepage.
+  }
+
+  try {
+    const activities = await apiFetch<Activity[]>("/open-play?status=ACTIVE", null);
+    const prices = activities.map((activity) => activity.pricePerSlot);
+    if (prices.length > 0) openPlayPrice = Math.min(...prices);
+  } catch {
+    // Leave openPlayPrice null — same fallback as above.
+  }
+
+  const plans: PricingPlan[] = [
+    {
+      name: "Court Booking",
+      price: courtPrice,
+      unit: "/hour",
+      icon: FiClock,
+      description: "Reserve a court for you and your group.",
+      features: [
+        "Book any available court",
+        "Choose your preferred time slot",
+        "Instant booking confirmation",
+      ],
+      href: "/courts",
+      cta: "Book a Court",
+    },
+    {
+      name: "Open Play",
+      price: openPlayPrice,
+      unit: "/session",
+      icon: FiUsers,
+      description: "Drop in and play with the community.",
+      features: [
+        "Join any scheduled Open Play session",
+        "Meet and play with other members",
+        "All skill levels welcome",
+      ],
+      href: "/open-play",
+      cta: "Join Open Play",
+    },
+  ];
+
   return (
     <section className="bg-secondary/5 py-20">
       <div className="mx-auto max-w-5xl px-4">
@@ -73,12 +98,25 @@ export function Pricing() {
 
               <p className="mt-3 text-sm text-gray-600">{plan.description}</p>
 
-              <p className="mt-4">
-                <span className="text-4xl font-bold text-secondary">
-                  ₱{plan.price}
-                </span>
-                <span className="text-gray-500">{plan.unit}</span>
-              </p>
+              <div className="mt-4">
+                {plan.price !== null ? (
+                  <>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Starts at
+                    </p>
+                    <p>
+                      <span className="text-4xl font-bold text-secondary">
+                        ₱{plan.price}
+                      </span>
+                      <span className="text-gray-500">{plan.unit}</span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Pricing varies — check availability
+                  </p>
+                )}
+              </div>
 
               <ul className="mt-6 flex-1 space-y-2">
                 {plan.features.map((feature) => (

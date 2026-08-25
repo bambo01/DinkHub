@@ -45,23 +45,17 @@ export function Hero() {
   return (
     <section className="relative isolate bg-secondary">
       <div className="absolute inset-0 overflow-hidden">
-        <Image
-          src="/hero3.png"
-          alt=""
-          fill
-          priority
-          className="object-cover"
-        />
+        <Image src="/hero5.png" alt="" fill priority className="object-cover" />
         <div
-          className="absolute inset-0 bg-gradient-to-r from-secondary via-secondary/95 to-secondary/40"
+          className="absolute inset-0 bg-gradient-to-r from-secondary via-secondary/65 to-secondary/40"
           aria-hidden="true"
         />
         <div
-          className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl"
+          className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl"
           aria-hidden="true"
         />
         <div
-          className="absolute -bottom-32 right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
+          className="absolute -bottom-32 right-10 h-80 w-80 rounded-full bg-primary/30 blur-3xl"
           aria-hidden="true"
         />
       </div>
@@ -69,14 +63,14 @@ export function Hero() {
       <div className="relative mx-auto flex min-h-[500px] max-w-7xl items-center px-4 pb-24 pt-20 sm:pb-28">
         <div className="max-w-xl">
           <span className="inline-block rounded-full bg-primary/15 px-4 py-1 text-sm font-semibold text-primary">
-            Your local pickleball hub
+            Pickleball SaaS Platform
           </span>
           <h1 className="mt-4 text-4xl font-bold leading-tight text-white sm:text-5xl">
-            Book a court. Join Open Play. Play more pickleball.
+            Grow Your Pickleball Business with Smarter Management
           </h1>
           <p className="mt-4 text-lg text-white/80">
-            Find open courts, reserve your slot in seconds, and connect with the
-            DinkHub community — all in one place.
+            DinkHub is an all-in-one pickleball booking platform that simplifies
+            reservations, customer management, and facility operations.
           </p>
           <div className="mt-8 flex flex-col gap-2 rounded-xl bg-white/95 p-3 shadow-lg sm:flex-row sm:items-center">
             <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">

@@ -1,15 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { FiAlertTriangle, FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
+import { BookingList } from "@/components/bookings/BookingList";
 import { Button } from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
-import { formatHour } from "@/lib/mock-courts";
-import type { CustomerBooking } from "@/types/booking";
+import { formatHour, toDateKey } from "@/lib/mock-courts";
+import { isUpcomingBooking, type CustomerBooking } from "@/types/booking";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 5;
@@ -42,14 +43,84 @@ function IconPanel({
   );
 }
 
-function ConfirmationContent() {
-  const searchParams = useSearchParams();
-  const bookingId = searchParams.get("bookingId");
+// The list of "not yet done" bookings — shown when this page is reached
+// without a specific bookingId (i.e. from the "Bookings" nav item, not a
+// PayMongo redirect or a click-through from History).
+function UpcomingBookingsView() {
+  const { accessToken } = useAuth();
+  const [bookings, setBookings] = useState<CustomerBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // setIsLoading/setError run synchronously before the fetch kicks off, which
+  // react-hooks/set-state-in-effect flags on principle — but the loading
+  // state genuinely needs to reset before each fetch starts.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!accessToken) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    apiFetch<CustomerBooking[]>("/bookings/mine", accessToken)
+      .then(setBookings)
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load bookings"))
+      .finally(() => setIsLoading(false));
+  }, [accessToken]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const upcomingBookings = useMemo(() => {
+    const todayKey = toDateKey(new Date());
+    return bookings.filter((booking) => isUpcomingBooking(booking, todayKey));
+  }, [bookings]);
+
+  return (
+    <section className="mx-auto max-w-2xl px-4 py-12">
+      <div className="flex items-center gap-3">
+        <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-primary/15 text-secondary">
+          <FiCalendar className="h-7 w-7" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold text-secondary">Bookings</h1>
+          <p className="text-sm text-gray-600">
+            Bookings that aren&apos;t done yet — pending payment or upcoming.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {!error && isLoading && (
+          <p className="text-sm text-gray-500">Loading…</p>
+        )}
+
+        {!error && !isLoading && upcomingBookings.length === 0 && (
+          <p className="text-sm text-gray-500">
+            You don&apos;t have any upcoming bookings. Once you book a court,
+            it&apos;ll show up here until it&apos;s played.
+          </p>
+        )}
+
+        {!error && !isLoading && upcomingBookings.length > 0 && (
+          <BookingList bookings={upcomingBookings} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SingleBookingView({
+  bookingId,
+  paymentOutcome,
+}: {
+  bookingId: string;
   // Reflects what PayMongo's redirect claimed — informational only. The
   // actual confirmation always comes from re-fetching the booking below,
   // never from this query param: a redirect to this page can be reached
   // without ever having paid.
-  const paymentOutcome = searchParams.get("status");
+  paymentOutcome: string | null;
+}) {
   const { accessToken } = useAuth();
 
   const [booking, setBooking] = useState<CustomerBooking | null>(null);
@@ -57,7 +128,7 @@ function ConfirmationContent() {
   const [pollAttempt, setPollAttempt] = useState(0);
 
   useEffect(() => {
-    if (!accessToken || !bookingId) return;
+    if (!accessToken) return;
     let cancelled = false;
 
     apiFetch<CustomerBooking>(`/bookings/${bookingId}`, accessToken)
@@ -85,15 +156,6 @@ function ConfirmationContent() {
     const timer = setTimeout(() => setPollAttempt((n) => n + 1), POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
   }, [booking, paymentOutcome, pollAttempt]);
-
-  if (!bookingId) {
-    return (
-      <IconPanel icon={FiCheckCircle} tone="primary" title="Booking Confirmation">
-        You don&apos;t have a booking to confirm right now. Once you book a
-        court or Open Play session, its confirmation will show up here.
-      </IconPanel>
-    );
-  }
 
   if (error) {
     return (
@@ -133,7 +195,10 @@ function ConfirmationContent() {
             {booking.referenceNumber}
           </p>
           <div className="mt-4 flex justify-center">
-            <QRCodeSVG value={booking.referenceNumber} size={180} />
+            <QRCodeSVG
+              value={`${window.location.origin}/verify/${booking.referenceNumber}`}
+              size={180}
+            />
           </div>
           <p className="mt-3 text-xs text-gray-500">Show this at check-in</p>
         </div>
@@ -209,10 +274,22 @@ function ConfirmationContent() {
   );
 }
 
+function ConfirmationRouter() {
+  const searchParams = useSearchParams();
+  const bookingId = searchParams.get("bookingId");
+  const paymentOutcome = searchParams.get("status");
+
+  if (!bookingId) {
+    return <UpcomingBookingsView />;
+  }
+
+  return <SingleBookingView bookingId={bookingId} paymentOutcome={paymentOutcome} />;
+}
+
 export default function BookingConfirmationPage() {
   return (
     <Suspense>
-      <ConfirmationContent />
+      <ConfirmationRouter />
     </Suspense>
   );
 }

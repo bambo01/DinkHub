@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FiArrowLeft, FiPlus, FiSave, FiTrash2 } from "react-icons/fi";
+import { GiTennisCourt } from "react-icons/gi";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatHour, toDateKey } from "@/lib/mock-courts";
@@ -31,6 +33,8 @@ export default function AdminCourtDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   // Per-date blocked slots.
   const [blockedDate, setBlockedDate] = useState(toDateKey(today));
@@ -87,6 +91,26 @@ export default function AdminCourtDetailPage() {
       .finally(() => setIsLoadingSlots(false));
   }, [accessToken, id, blockedDate]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  async function handleImageSelected(file: File) {
+    setImageError(null);
+    setIsUploadingImage(true);
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const updated = await apiFetch<Court>(`/courts/${id}/image`, accessToken, {
+        method: "PATCH",
+        body: formData,
+      });
+      setCourt(updated);
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : "Failed to upload image");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,6 +204,17 @@ export default function AdminCourtDetailPage() {
             </p>
 
             <div className="mt-6 space-y-4">
+              <div>
+                <ImageUploadField
+                  label="Court image"
+                  imageUrl={court.imageUrl}
+                  onFileSelected={handleImageSelected}
+                  isUploading={isUploadingImage}
+                  fallbackIcon={GiTennisCourt}
+                />
+                {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
+              </div>
+
               <div>
                 <label htmlFor="name" className="mb-1 block text-sm font-medium text-secondary">
                   Name

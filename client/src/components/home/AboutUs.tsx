@@ -3,42 +3,47 @@ import { FiCheckCircle } from "react-icons/fi";
 import { LinkButton } from "@/components/ui/LinkButton";
 
 const highlights = [
-  "Four courts, indoor and outdoor",
-  "Regular Open Play sessions for all skill levels",
-  "A community that keeps growing, on and off the court",
+  "Online pickleball court booking and scheduling",
+  "Easy-to-manage bookings, customers, and facility operations",
+  "Tools designed to help pickleball businesses grow and attract more players",
 ];
 
 export function AboutUs() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20">
+    <section id="about" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20">
       <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-        <div className="relative h-72 overflow-hidden rounded-2xl shadow-lg sm:h-96 lg:h-[420px]">
+        <div className="relative h-72 overflow-hidden rounded-2xl sm:h-96 lg:h-[420px]">
           <Image
-            src="/hero3.png"
-            alt="Players on a DinkHub court"
+            src="/about.png"
+            alt="DinkHub pickleball court booking and management platform"
             fill
-            className="object-cover object-right"
+            className="object-cover object-center"
           />
         </div>
 
         <div>
           <span className="inline-block rounded-full bg-primary/15 px-4 py-1 text-sm font-semibold text-primary">
-            About Us
+            About DinkHub
           </span>
+
           <h2 className="mt-4 text-3xl font-bold text-secondary">
-            Built by players, for players
+            Grow Your Pickleball Business with DinkHub
           </h2>
+
           <p className="mt-4 text-gray-600">
-            DinkHub started with a single indoor court and a group of players
-            who wanted an easier way to book time and find people to play
-            with. Today we run four courts and regular Open Play sessions,
-            and we&apos;re still focused on the same thing: making it simple
-            to get on a court and play.
+            DinkHub is a pickleball management and booking platform built to
+            help pickleball facilities simplify their daily operations and grow
+            their business. From online court reservations to customer
+            management, DinkHub brings essential tools together in one
+            easy-to-use platform.
           </p>
 
           <ul className="mt-6 space-y-3">
             {highlights.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm text-gray-700">
+              <li
+                key={item}
+                className="flex items-start gap-3 text-sm text-gray-700"
+              >
                 <FiCheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary" />
                 {item}
               </li>
@@ -46,8 +51,8 @@ export function AboutUs() {
           </ul>
 
           <div className="mt-8">
-            <LinkButton href="/courts" variant="primary">
-              View Our Courts
+            <LinkButton href="/features" variant="primary">
+              Explore DinkHub
             </LinkButton>
           </div>
         </div>

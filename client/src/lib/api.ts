@@ -30,10 +30,15 @@ export async function apiFetch<T>(
   accessToken: string | null,
   init?: RequestInit,
 ): Promise<T> {
+  // FormData bodies (file uploads) need the browser to set their own
+  // multipart Content-Type with the correct boundary — forcing JSON here
+  // would break the upload.
+  const isFormData = init?.body instanceof FormData;
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },

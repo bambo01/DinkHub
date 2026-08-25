@@ -119,8 +119,20 @@ export function CourtDetail({
   return (
     <article className="mx-auto max-w-4xl px-4 py-12">
       <div className="overflow-hidden rounded-2xl border border-gray-200">
-        <div className="relative flex h-56 items-center justify-center bg-gradient-to-br from-secondary to-secondary/70 sm:h-72">
-          <GiTennisCourt className="h-20 w-20 text-primary/80" />
+        <div className="relative flex h-56 items-center justify-center overflow-hidden bg-gradient-to-br from-secondary to-secondary/70 sm:h-72">
+          {court.imageUrl ? (
+            // Uploaded images are served from Supabase Storage's public
+            // bucket — a plain <img> avoids needing that domain
+            // allow-listed for next/image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={court.imageUrl}
+              alt={court.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <GiTennisCourt className="h-20 w-20 text-primary/80" />
+          )}
           <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-secondary">
             {courtTypeLabel(court.type)}
           </span>

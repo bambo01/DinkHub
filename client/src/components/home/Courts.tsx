@@ -40,8 +40,20 @@ export async function Courts() {
               key={court.id}
               className="overflow-hidden rounded-xl border border-gray-200 transition-shadow hover:shadow-md"
             >
-              <div className="relative flex h-36 items-center justify-center bg-gradient-to-br from-secondary to-secondary/70">
-                <GiTennisCourt className="h-14 w-14 text-primary/80" />
+              <div className="relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-secondary to-secondary/70">
+                {court.imageUrl ? (
+                  // Uploaded images are served from Supabase Storage's
+                  // public bucket — a plain <img> avoids needing that
+                  // domain allow-listed for next/image.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={court.imageUrl}
+                    alt={court.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <GiTennisCourt className="h-14 w-14 text-primary/80" />
+                )}
                 <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-secondary">
                   {courtTypeLabel(court.type)}
                 </span>

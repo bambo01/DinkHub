@@ -8,7 +8,7 @@ const contactDetails = [
   {
     icon: FiMapPin,
     label: "Address",
-    value: "123 Pickleball Ave, Quezon City, Metro Manila",
+    value: "123 Pickleball Ave, San Fernando, Pampanga",
   },
   {
     icon: FiPhone,
@@ -36,7 +36,7 @@ export function Contact() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-20">
+    <section id="contact" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-secondary">Get in Touch</h2>
         <p className="mt-2 text-gray-600">

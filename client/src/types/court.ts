@@ -11,6 +11,7 @@ export interface Court {
   defaultOpenHour: number;
   defaultCloseHour: number;
   pricePerHour: number;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

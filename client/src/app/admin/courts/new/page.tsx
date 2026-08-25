@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiSave } from "react-icons/fi";
+import { GiTennisCourt } from "react-icons/gi";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatHour } from "@/lib/mock-courts";
@@ -18,8 +20,15 @@ export default function NewCourtPage() {
   const [openHour, setOpenHour] = useState(8);
   const [closeHour, setCloseHour] = useState(19);
   const [pricePerHour, setPricePerHour] = useState(500);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function handleImageSelected(file: File) {
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,6 +48,20 @@ export default function NewCourtPage() {
           pricePerHour,
         }),
       });
+
+      if (imageFile) {
+        // Best-effort — the court itself is already created at this point,
+        // so a failed image upload shouldn't block navigation or look like
+        // the whole creation failed. It can always be added from the edit
+        // page instead.
+        const formData = new FormData();
+        formData.append("image", imageFile);
+        await apiFetch(`/courts/${court.id}/image`, accessToken, {
+          method: "PATCH",
+          body: formData,
+        }).catch(() => {});
+      }
+
       router.push(`/admin/courts/${court.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create court");
@@ -65,6 +88,13 @@ export default function NewCourtPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <ImageUploadField
+            label="Court image"
+            imageUrl={imagePreviewUrl}
+            onFileSelected={handleImageSelected}
+            fallbackIcon={GiTennisCourt}
+          />
+
           <div>
             <label htmlFor="name" className="mb-1 block text-sm font-medium text-secondary">
               Name

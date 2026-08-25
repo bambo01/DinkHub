@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  FiCheckCircle,
+  FiCalendar,
   FiChevronDown,
   FiClock,
   FiLogOut,
@@ -15,11 +15,7 @@ import { cn } from "@/lib/utils";
 
 const menuItems = [
   { label: "View Profile", href: "/profile", icon: FiUser },
-  {
-    label: "Booking Confirmation",
-    href: "/bookings/confirmation",
-    icon: FiCheckCircle,
-  },
+  { label: "Bookings", href: "/bookings/confirmation", icon: FiCalendar },
   { label: "History", href: "/bookings/history", icon: FiClock },
 ];
 
@@ -60,9 +56,21 @@ export function UserMenu() {
         onClick={() => setIsOpen((open) => !open)}
         className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-secondary hover:bg-secondary/5"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-secondary">
-          {displayName.charAt(0).toUpperCase()}
-        </span>
+        {user.avatarUrl ? (
+          // Avatar URLs come from Supabase Storage's public bucket — a
+          // plain <img> avoids needing that domain allow-listed for
+          // next/image.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.avatarUrl}
+            alt=""
+            className="h-7 w-7 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-secondary">
+            {displayName.charAt(0).toUpperCase()}
+          </span>
+        )}
         {displayName}
         <FiChevronDown
           className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")}

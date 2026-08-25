@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,9 +24,9 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "Home", href: "/", icon: FiHome },
-  { label: "About Us", href: "/about", icon: FiInfo },
+  { label: "About Us", href: "/#about", icon: FiInfo },
   { label: "Courts", href: "/courts", icon: FiGrid },
-  { label: "Contact", href: "/contact", icon: FiMail },
+  { label: "Contact", href: "/#contact", icon: FiMail },
   { label: "Open Play", href: "/open-play", icon: FiUsers },
 ];
 
@@ -40,10 +40,67 @@ const mobileAccountLinks = [
   { label: "History", href: "/bookings/history", icon: FiClock },
 ];
 
+// Homepage-only sections that don't have their own route — the header
+// scroll-spies these so "About Us"/"Contact" can show active while the user
+// is anchored on /, since usePathname() never reflects a hash.
+type HomeSection = "home" | "about" | "contact";
+
+function getActiveHomeSection(): HomeSection {
+  // Contact is the last section on the page — once the page has scrolled as
+  // far as it can, count it active even if its top never reaches the
+  // threshold below. That happens whenever the viewport is taller than
+  // whatever's left below Contact (its own height plus the footer), which
+  // on a typical 1080p screen it easily is — the page runs out of room to
+  // scroll before the threshold check below would ever fire.
+  const scrolledToBottom =
+    window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  if (scrolledToBottom && document.getElementById("contact")) return "contact";
+
+  // Matches the sticky header height (h-20) plus a little slack, so a
+  // section only counts as active once it's actually visible below it.
+  const threshold = 96;
+  const contactTop = document.getElementById("contact")?.getBoundingClientRect().top;
+  if (contactTop !== undefined && contactTop <= threshold) return "contact";
+  const aboutTop = document.getElementById("about")?.getBoundingClientRect().top;
+  if (aboutTop !== undefined && aboutTop <= threshold) return "about";
+  return "home";
+}
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [activeHomeSection, setActiveHomeSection] = useState<HomeSection>("home");
+
+  // setActiveHomeSection runs synchronously on mount/pathname-change before
+  // the listeners attach, which react-hooks/set-state-in-effect flags on
+  // principle — but the very first paint needs a correct value too, not
+  // just later scroll events.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (pathname !== "/") return;
+
+    setActiveHomeSection(getActiveHomeSection());
+
+    function handleScroll() {
+      setActiveHomeSection(getActiveHomeSection());
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [pathname]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  function isLinkActive(href: string) {
+    if (href === "/#about") return pathname === "/" && activeHomeSection === "about";
+    if (href === "/#contact") return pathname === "/" && activeHomeSection === "contact";
+    if (href === "/") return pathname === "/" && activeHomeSection === "home";
+    return pathname === href;
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-secondary/10 bg-white">
@@ -66,7 +123,7 @@ export function Header() {
               href={link.href}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-secondary transition-colors hover:text-primary",
-                pathname === link.href &&
+                isLinkActive(link.href) &&
                   "bg-primary text-secondary font-semibold hover:text-secondary",
               )}
             >
@@ -132,7 +189,7 @@ export function Header() {
               href={link.href}
               className={cn(
                 "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-secondary hover:bg-secondary/5",
-                pathname === link.href && "bg-primary hover:bg-primary",
+                isLinkActive(link.href) && "bg-primary hover:bg-primary",
               )}
               onClick={() => setIsMenuOpen(false)}
             >
