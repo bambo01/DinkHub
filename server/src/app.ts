@@ -10,6 +10,11 @@ import routes from "./routes/index.js";
 
 const app = express();
 
+// Render (and most PaaS hosts) sit the app behind a reverse proxy, which
+// sets X-Forwarded-For on every request — without this, express-rate-limit
+// can't tell real client IPs apart and warns/misbehaves accordingly.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 
 app.use(
