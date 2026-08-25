@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { gmailTransport } from "../config/gmail.js";
+import { getGmailTransport } from "../config/gmail.js";
 import { env } from "../config/env.js";
 import { formatHour } from "../utils/format-hour.js";
 import type { Booking } from "./bookings.service.js";
@@ -56,6 +56,7 @@ export async function sendBookingConfirmationEmail(
       </div>
     `;
 
+    const gmailTransport = await getGmailTransport();
     await gmailTransport.sendMail({
       from: `DinkHub <${env.GMAIL_USER}>`,
       to: toEmail,
@@ -128,6 +129,7 @@ export async function sendOpenPlayConfirmationEmail(
       </div>
     `;
 
+    const gmailTransport = await getGmailTransport();
     await gmailTransport.sendMail({
       from: `DinkHub <${env.GMAIL_USER}>`,
       to: toEmail,
