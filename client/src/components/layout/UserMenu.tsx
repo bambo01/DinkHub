@@ -7,6 +7,7 @@ import {
   FiCalendar,
   FiChevronDown,
   FiClock,
+  FiGift,
   FiLogOut,
   FiUser,
 } from "react-icons/fi";
@@ -17,6 +18,7 @@ const menuItems = [
   { label: "View Profile", href: "/profile", icon: FiUser },
   { label: "Bookings", href: "/bookings/confirmation", icon: FiCalendar },
   { label: "History", href: "/bookings/history", icon: FiClock },
+  { label: "Rewards", href: "/rewards", icon: FiGift },
 ];
 
 export function UserMenu() {

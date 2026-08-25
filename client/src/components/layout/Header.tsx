@@ -16,6 +16,7 @@ import {
   FiUser,
   FiCheckCircle,
   FiClock,
+  FiGift,
 } from "react-icons/fi";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -38,6 +39,7 @@ const mobileAccountLinks = [
     icon: FiCheckCircle,
   },
   { label: "History", href: "/bookings/history", icon: FiClock },
+  { label: "Rewards", href: "/rewards", icon: FiGift },
 ];
 
 // Homepage-only sections that don't have their own route — the header
