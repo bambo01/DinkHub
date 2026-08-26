@@ -1,5 +1,30 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
 
+// Matches AuthContext's STORAGE_KEY — duplicated as a literal rather than
+// imported, since importing a "use client" context module here would pull
+// React context machinery into a plain fetch helper for no reason.
+const AUTH_STORAGE_KEY = "dinkhub-auth";
+
+// A 401 here only ever means requireAuth rejected the token — missing,
+// malformed, or expired. There's no legitimate non-session reason for it,
+// so treat every one as "you're logged out": clear the stale session and
+// send the user home rather than leaving them on a page that'll just keep
+// failing the same way on every subsequent request.
+function handleUnauthorized() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // Ignore inaccessible storage — the redirect below still gets them out.
+  }
+  // A hard navigation, not router.push() — this plain helper has no
+  // component tree to call useRouter() from, and a full reload guarantees
+  // every bit of in-memory app state gets wiped along with the session,
+  // not just the URL.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.href = "/";
+}
+
 export class ApiError extends Error {
   status?: number;
 
@@ -47,6 +72,9 @@ export async function apiFetch<T>(
   const body = await parseResponseBody(response);
 
   if (!response.ok || !body.success) {
+    if (response.status === 401) {
+      handleUnauthorized();
+    }
     throw new ApiError(body.message ?? "Request failed", response.status);
   }
 

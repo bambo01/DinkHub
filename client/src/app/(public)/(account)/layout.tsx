@@ -10,7 +10,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/login");
+      router.replace("/");
     }
   }, [isLoading, user, router]);
 

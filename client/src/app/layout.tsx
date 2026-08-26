@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Comfortaa, Montserrat, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>{children}</AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
