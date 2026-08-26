@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 import { Button } from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { PaymentTestNotice } from "@/components/ui/PaymentTestNotice";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatHour } from "@/lib/mock-courts";
@@ -283,6 +284,7 @@ function CheckoutContent() {
               {submitError && (
                 <p className="mt-4 text-sm text-red-600">{submitError}</p>
               )}
+              {!isRewardApplied && <PaymentTestNotice />}
               <Button
                 type="button"
                 variant="primary"

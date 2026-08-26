@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { Button } from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { PaymentTestNotice } from "@/components/ui/PaymentTestNotice";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatHour } from "@/lib/mock-courts";
@@ -359,6 +360,7 @@ function OpenPlayDetailContent({ activityId }: { activityId: string }) {
                   </p>
                 )}
                 {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
+                <PaymentTestNotice />
                 <Button
                   type="button"
                   variant="primary"
@@ -456,12 +458,13 @@ function OpenPlayDetailContent({ activityId }: { activityId: string }) {
                 )}
 
                 {actionError && <p className="mb-3 text-sm text-red-600">{actionError}</p>}
+                <PaymentTestNotice />
                 <Button
                   type="button"
                   variant="primary"
                   disabled={isJoining || authLoading || isLoadingBooking}
                   onClick={handleJoin}
-                  className="w-full"
+                  className="mt-4 w-full"
                 >
                   {isJoining ? "Joining…" : `Join & Pay ₱${totalAmount.toFixed(2)}`}
                 </Button>
