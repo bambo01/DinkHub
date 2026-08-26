@@ -23,9 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = "https://dinkhub-eight.vercel.app";
-const title = "DinkHub — Pickleball Booking & Management Platform";
+const title = "DinkHub (Testing) — Pickleball Booking & Management Platform";
 const description =
-  "Book pickleball courts and manage play with DinkHub, the all-in-one pickleball booking and management platform.";
+  "Testing environment for DinkHub, the all-in-one pickleball booking and management platform. Bookings made here are not official.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
