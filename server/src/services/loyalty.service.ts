@@ -34,18 +34,30 @@ function mapReward(row: {
   };
 }
 
-// Called after a court booking is confirmed. Idempotent by design: the
-// unique (user_id, earned_date) constraint means a second confirmed booking
-// on a day that already earned a sticker just no-ops here — "1 sticker per
-// day, no matter how many hours or separate bookings."
+// Called after a court booking OR an Open Play booking is confirmed.
+// Idempotent by design: the unique (user_id, earned_date) constraint means
+// a second confirmed booking on a day that already earned a sticker just
+// no-ops here — "1 sticker per day, no matter how many hours, bookings, or
+// booking types that day."
 export async function awardStickerForBooking(
   userId: string,
   bookingDate: string,
-  bookingId: string,
+  booking: { courtBookingId: string } | { openPlayBookingId: string },
 ): Promise<void> {
-  const { error } = await supabase
-    .from("loyalty_stickers")
-    .insert({ user_id: userId, earned_date: bookingDate, booking_id: bookingId });
+  const insertRow: {
+    user_id: string;
+    earned_date: string;
+    booking_id?: string;
+    open_play_booking_id?: string;
+  } = { user_id: userId, earned_date: bookingDate };
+
+  if ("courtBookingId" in booking) {
+    insertRow.booking_id = booking.courtBookingId;
+  } else {
+    insertRow.open_play_booking_id = booking.openPlayBookingId;
+  }
+
+  const { error } = await supabase.from("loyalty_stickers").insert(insertRow);
 
   if (error && error.code !== "23505") {
     console.error("Failed to award loyalty sticker:", error);

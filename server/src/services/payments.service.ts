@@ -272,11 +272,9 @@ async function reconcileCourtBookingPayment(bookingId: string): Promise<void> {
   // One sticker per calendar play-day, awarded only for a real paid
   // booking — the (user_id, earned_date) unique constraint makes this a
   // no-op if today's sticker was already earned by an earlier booking.
-  await loyaltyService.awardStickerForBooking(
-    confirmedBooking.userId,
-    confirmedBooking.bookingDate,
-    confirmedBooking.id,
-  );
+  await loyaltyService.awardStickerForBooking(confirmedBooking.userId, confirmedBooking.bookingDate, {
+    courtBookingId: confirmedBooking.id,
+  });
 }
 
 async function reconcileOpenPlayBookingPayment(openPlayBookingId: string): Promise<void> {
@@ -293,6 +291,13 @@ async function reconcileOpenPlayBookingPayment(openPlayBookingId: string): Promi
     customer.email,
     customer.fullName,
   );
+
+  // Same "1 sticker per calendar play-day" rule as court bookings — see
+  // awardStickerForBooking. Open Play sessions confirm on the activity's
+  // event date, not a booking-specific date field.
+  await loyaltyService.awardStickerForBooking(confirmedBooking.userId, activity.eventDate, {
+    openPlayBookingId: confirmedBooking.id,
+  });
 }
 
 // Called from the webhook after signature verification confirms a
