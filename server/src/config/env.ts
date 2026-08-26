@@ -7,6 +7,12 @@ const envSchema = z.object({
 
   FRONTEND_URL: z.string().url(),
 
+  // Public URL this API server is reachable at (e.g. the Render service
+  // URL). Used to build the absolute QR-code image URL embedded in
+  // confirmation emails — Brevo's API has no cid/inline-attachment support,
+  // so the QR has to be a hosted image rather than an email attachment.
+  API_BASE_URL: z.string().url().default("http://localhost:5000"),
+
   SUPABASE_URL: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
@@ -15,11 +21,12 @@ const envSchema = z.object({
   PAYMONGO_WEBHOOK_SECRET: z.string().min(1),
 
   // Optional — booking confirmation emails are skipped (not an error) when
-  // these aren't set. See email.service.ts. GMAIL_APP_PASSWORD is a Gmail
-  // App Password (Google Account > Security > App passwords), not the
-  // account's regular login password.
-  GMAIL_USER: z.string().default(""),
-  GMAIL_APP_PASSWORD: z.string().default(""),
+  // these aren't set. See email.service.ts. BREVO_SENDER_EMAIL must be a
+  // sender verified in the Brevo dashboard (Senders, Domains & Dedicated
+  // IPs > Senders).
+  BREVO_API_KEY: z.string().default(""),
+  BREVO_SENDER_EMAIL: z.string().default(""),
+  BREVO_SENDER_NAME: z.string().default("DinkHub"),
 });
 
 const parsed = envSchema.safeParse(process.env);

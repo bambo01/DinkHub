@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getByReference } from "../controllers/verify.controller.js";
+import { getByReference, getQrCode } from "../controllers/verify.controller.js";
 
 const router = Router();
 
@@ -7,5 +7,6 @@ const router = Router();
 // for: showing booking details to whoever scans it (staff at check-in, or
 // the customer themselves).
 router.get("/:reference", getByReference);
+router.get("/:reference/qr", getQrCode);
 
 export default router;

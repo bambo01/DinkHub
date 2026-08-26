@@ -1,5 +1,4 @@
-import QRCode from "qrcode";
-import { getGmailTransport } from "../config/gmail.js";
+import { brevo } from "../config/brevo.js";
 import { env } from "../config/env.js";
 import { formatHour } from "../utils/format-hour.js";
 import type { Booking } from "./bookings.service.js";
@@ -7,11 +6,11 @@ import type { Court } from "./courts.service.js";
 import type { Activity } from "./open-play.service.js";
 import type { OpenPlayBooking } from "./open-play-bookings.service.js";
 
-// The QR code encodes a link to the public verify page, not the bare
-// reference number — scanning it should take whoever's checking someone in
-// straight to the booking details, not just a plain-text string.
-function verifyUrl(referenceNumber: string): string {
-  return `${env.FRONTEND_URL}/verify/${referenceNumber}`;
+// Points at the hosted QR endpoint (verify.controller.ts), not the verify
+// page itself — Brevo's API has no cid/inline-attachment support, so the
+// email embeds this as a plain <img src>.
+function qrImageUrl(referenceNumber: string): string {
+  return `${env.API_BASE_URL}/api/verify/${referenceNumber}/qr`;
 }
 
 export async function sendBookingConfirmationEmail(
@@ -20,20 +19,14 @@ export async function sendBookingConfirmationEmail(
   toEmail: string,
   toName: string | null,
 ): Promise<void> {
-  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
     console.log(
-      `Email not configured (GMAIL_USER/GMAIL_APP_PASSWORD unset) — skipping confirmation email for booking ${booking.referenceNumber}`,
+      `Email not configured (BREVO_API_KEY/BREVO_SENDER_EMAIL unset) — skipping confirmation email for booking ${booking.referenceNumber}`,
     );
     return;
   }
 
   try {
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl(booking.referenceNumber), {
-      width: 240,
-      margin: 1,
-    });
-    const qrBase64 = qrDataUrl.split(",")[1] ?? "";
-
     const greetingName = toName ?? "there";
     const timeRange = `${formatHour(booking.startHour)} – ${formatHour(booking.endHour)}`;
 
@@ -51,25 +44,16 @@ export async function sendBookingConfirmationEmail(
           <tr><td style="padding: 4px 0; color: #667;">Amount Paid</td><td style="padding: 4px 0;">₱${booking.totalAmount.toFixed(2)}</td></tr>
         </table>
         <p>Show this QR code at check-in:</p>
-        <img src="cid:booking-qr" alt="Booking QR code" width="200" height="200" />
+        <img src="${qrImageUrl(booking.referenceNumber)}" alt="Booking QR code" width="200" height="200" />
         <p style="margin-top: 24px; color: #999; font-size: 12px;">DinkHub</p>
       </div>
     `;
 
-    const gmailTransport = await getGmailTransport();
-    await gmailTransport.sendMail({
-      from: `DinkHub <${env.GMAIL_USER}>`,
-      to: toEmail,
+    await brevo.post("/smtp/email", {
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: toEmail, name: toName ?? undefined }],
       subject: `Booking Confirmed — ${booking.referenceNumber}`,
-      html,
-      attachments: [
-        {
-          filename: "booking-qr.png",
-          content: qrBase64,
-          encoding: "base64",
-          cid: "booking-qr",
-        },
-      ],
+      htmlContent: html,
     });
   } catch (err) {
     // Email delivery is best-effort — the booking is already confirmed
@@ -88,20 +72,14 @@ export async function sendOpenPlayConfirmationEmail(
   toEmail: string,
   toName: string | null,
 ): Promise<void> {
-  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
     console.log(
-      `Email not configured (GMAIL_USER/GMAIL_APP_PASSWORD unset) — skipping confirmation email for open play booking ${booking.referenceNumber}`,
+      `Email not configured (BREVO_API_KEY/BREVO_SENDER_EMAIL unset) — skipping confirmation email for open play booking ${booking.referenceNumber}`,
     );
     return;
   }
 
   try {
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl(booking.referenceNumber), {
-      width: 240,
-      margin: 1,
-    });
-    const qrBase64 = qrDataUrl.split(",")[1] ?? "";
-
     const greetingName = toName ?? "there";
     const timeRange = `${formatHour(activity.startHour)} – ${formatHour(activity.endHour)}`;
     const courtNames = activity.courts.map((court) => court.name).join(", ");
@@ -124,25 +102,16 @@ export async function sendOpenPlayConfirmationEmail(
           <tr><td style="padding: 4px 0; color: #667;">Amount Paid</td><td style="padding: 4px 0;">₱${booking.amount.toFixed(2)}</td></tr>
         </table>
         <p>Show this QR code at check-in:</p>
-        <img src="cid:open-play-qr" alt="Open play QR code" width="200" height="200" />
+        <img src="${qrImageUrl(booking.referenceNumber)}" alt="Open play QR code" width="200" height="200" />
         <p style="margin-top: 24px; color: #999; font-size: 12px;">DinkHub</p>
       </div>
     `;
 
-    const gmailTransport = await getGmailTransport();
-    await gmailTransport.sendMail({
-      from: `DinkHub <${env.GMAIL_USER}>`,
-      to: toEmail,
+    await brevo.post("/smtp/email", {
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: toEmail, name: toName ?? undefined }],
       subject: `You're In — ${booking.referenceNumber}`,
-      html,
-      attachments: [
-        {
-          filename: "open-play-qr.png",
-          content: qrBase64,
-          encoding: "base64",
-          cid: "open-play-qr",
-        },
-      ],
+      htmlContent: html,
     });
   } catch (err) {
     // Email delivery is best-effort — the reservation is already confirmed
