@@ -6,11 +6,14 @@ import { BookingList } from "@/components/bookings/BookingList";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { toDateKey } from "@/lib/mock-courts";
+import { courtBookingToDisplay, openPlayBookingToDisplay, type DisplayBooking } from "@/lib/booking-display";
 import { isPastBooking, type CustomerBooking } from "@/types/booking";
+import { isPastOpenPlayBooking, type CustomerOpenPlayBooking } from "@/types/openPlay";
 
 export default function BookingHistoryPage() {
   const { accessToken } = useAuth();
-  const [bookings, setBookings] = useState<CustomerBooking[]>([]);
+  const [courtBookings, setCourtBookings] = useState<CustomerBooking[]>([]);
+  const [openPlayBookings, setOpenPlayBookings] = useState<CustomerOpenPlayBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,17 +27,29 @@ export default function BookingHistoryPage() {
     setIsLoading(true);
     setError(null);
 
-    apiFetch<CustomerBooking[]>("/bookings/mine", accessToken)
-      .then(setBookings)
+    Promise.all([
+      apiFetch<CustomerBooking[]>("/bookings/mine", accessToken),
+      apiFetch<CustomerOpenPlayBooking[]>("/open-play/bookings/mine", accessToken),
+    ])
+      .then(([court, openPlay]) => {
+        setCourtBookings(court);
+        setOpenPlayBookings(openPlay);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load bookings"))
       .finally(() => setIsLoading(false));
   }, [accessToken]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const pastBookings = useMemo(() => {
+  const pastBookings: DisplayBooking[] = useMemo(() => {
     const todayKey = toDateKey(new Date());
-    return bookings.filter((booking) => isPastBooking(booking, todayKey));
-  }, [bookings]);
+    const past = [
+      ...courtBookings.filter((b) => isPastBooking(b, todayKey)).map(courtBookingToDisplay),
+      ...openPlayBookings
+        .filter((b) => isPastOpenPlayBooking(b, todayKey))
+        .map(openPlayBookingToDisplay),
+    ];
+    return past.sort((a, b) => b.date.localeCompare(a.date) || b.startHour - a.startHour);
+  }, [courtBookings, openPlayBookings]);
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-12">

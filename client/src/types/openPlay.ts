@@ -50,6 +50,29 @@ export interface AdminOpenPlayBooking extends OpenPlayBooking {
   customerEmail: string;
 }
 
+export interface CustomerOpenPlayBooking extends OpenPlayBooking {
+  activityTitle: string;
+  eventDate: string;
+  startHour: number;
+  endHour: number;
+}
+
+// Mirrors isUpcomingBooking/isPastBooking in types/booking.ts — Open Play
+// bookings don't have COMPLETED/EXPIRED statuses, so "active" here just
+// means "not cancelled and not already played."
+const ACTIVE_OPEN_PLAY_STATUSES: OpenPlayBookingStatus[] = ["PENDING_PAYMENT", "CONFIRMED"];
+
+export function isUpcomingOpenPlayBooking(
+  booking: CustomerOpenPlayBooking,
+  todayKey: string,
+): boolean {
+  return ACTIVE_OPEN_PLAY_STATUSES.includes(booking.status) && booking.eventDate >= todayKey;
+}
+
+export function isPastOpenPlayBooking(booking: CustomerOpenPlayBooking, todayKey: string): boolean {
+  return !isUpcomingOpenPlayBooking(booking, todayKey);
+}
+
 export function skillLevelLabel(level: SkillLevel) {
   switch (level) {
     case "ALL_LEVELS":

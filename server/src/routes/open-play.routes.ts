@@ -4,10 +4,12 @@ import {
   deleteActivity,
   getActivity,
   getMyBooking,
+  getOpenPlayBooking,
   getParticipants,
   joinActivity,
   listActivities,
   listActivityBookings,
+  listMyOpenPlayBookings,
   updateActivity,
   updateActivityImage,
 } from "../controllers/open-play.controller.js";
@@ -16,6 +18,12 @@ import { requireAdmin } from "../middleware/admin.middleware.js";
 import { imageUpload } from "../middleware/upload.middleware.js";
 
 const router = Router();
+
+// Registered before /:id so "bookings" isn't swallowed as an activity id —
+// not that it would be anyway (/:id only ever matches one path segment),
+// but this keeps it visually consistent with bookings.routes.ts.
+router.get("/bookings/mine", requireAuth, listMyOpenPlayBookings);
+router.get("/bookings/:id", requireAuth, getOpenPlayBooking);
 
 // Public — anyone can browse scheduled Open Play activities and see who's
 // already confirmed for one.

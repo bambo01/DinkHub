@@ -76,6 +76,19 @@ export async function getMyBooking(req: Request, res: Response) {
   res.status(200).json({ success: true, data: booking });
 }
 
+export async function listMyOpenPlayBookings(req: Request, res: Response) {
+  const bookings = await openPlayBookingsService.listBookingsForUser(req.userId!);
+  res.status(200).json({ success: true, data: bookings });
+}
+
+export async function getOpenPlayBooking(req: Request, res: Response) {
+  const booking = await openPlayBookingsService.getCustomerBookingById(
+    req.userId!,
+    req.params.id as string,
+  );
+  res.status(200).json({ success: true, data: booking });
+}
+
 export async function listActivityBookings(req: Request, res: Response) {
   const bookings = await openPlayBookingsService.listBookingsForActivity(
     req.params.id as string,

@@ -157,6 +157,70 @@ export async function getMyBookingForActivity(
   return data ? mapBooking(data) : null;
 }
 
+export interface CustomerOpenPlayBooking extends OpenPlayBooking {
+  activityTitle: string;
+  eventDate: string;
+  startHour: number;
+  endHour: number;
+}
+
+interface CustomerOpenPlayBookingRow extends OpenPlayBookingRow {
+  open_play_activities: {
+    title: string;
+    event_date: string;
+    start_hour: number;
+    end_hour: number;
+  } | null;
+}
+
+function mapCustomerBooking(row: CustomerOpenPlayBookingRow): CustomerOpenPlayBooking {
+  return {
+    ...mapBooking(row),
+    activityTitle: row.open_play_activities?.title ?? "Open Play",
+    eventDate: row.open_play_activities?.event_date ?? "",
+    startHour: row.open_play_activities?.start_hour ?? 0,
+    endHour: row.open_play_activities?.end_hour ?? 0,
+  };
+}
+
+const CUSTOMER_BOOKING_COLUMNS = `${BOOKING_COLUMNS}, open_play_activities(title, event_date, start_hour, end_hour)`;
+
+// Combines the ownership check into the query itself, mirroring
+// bookings.service.ts's getCustomerBookingById for court bookings.
+export async function getCustomerBookingById(
+  userId: string,
+  id: string,
+): Promise<CustomerOpenPlayBooking> {
+  const { data, error } = await supabase
+    .from("open_play_bookings")
+    .select(CUSTOMER_BOOKING_COLUMNS)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+
+  // Same 404 whether the booking doesn't exist or just isn't this user's —
+  // don't leak that a booking with this id exists for someone else.
+  if (error || !data) {
+    throw new AppError("Booking not found", 404);
+  }
+
+  return mapCustomerBooking(data as unknown as CustomerOpenPlayBookingRow);
+}
+
+export async function listBookingsForUser(userId: string): Promise<CustomerOpenPlayBooking[]> {
+  const { data, error } = await supabase
+    .from("open_play_bookings")
+    .select(CUSTOMER_BOOKING_COLUMNS)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new AppError("Failed to load bookings", 500);
+  }
+
+  return ((data ?? []) as unknown as CustomerOpenPlayBookingRow[]).map(mapCustomerBooking);
+}
+
 export async function markBookingConfirmed(id: string): Promise<void> {
   // Only flips PENDING_PAYMENT -> CONFIRMED — the WHERE clause makes this an
   // idempotency guard too, so a duplicate webhook delivery that reconciles
