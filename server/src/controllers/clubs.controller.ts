@@ -4,6 +4,7 @@ import * as clubsService from "../services/clubs.service.js";
 import * as invitesService from "../services/club-invites.service.js";
 import {
   createClubSchema,
+  createCommentSchema,
   createInviteSchema,
   createPostSchema,
   createSessionSchema,
@@ -184,4 +185,34 @@ export async function previewInvite(req: Request, res: Response) {
 export async function acceptInvite(req: Request, res: Response) {
   const result = await invitesService.acceptInvite(req.params.token as string, req.userId!);
   res.status(200).json({ success: true, data: result });
+}
+
+export async function listComments(req: Request, res: Response) {
+  const comments = await clubsService.listComments(
+    param(req, "id"),
+    param(req, "postId"),
+    req.userId!,
+  );
+  res.status(200).json({ success: true, data: comments });
+}
+
+export async function createComment(req: Request, res: Response) {
+  const input = createCommentSchema.parse(req.body);
+  const comment = await clubsService.createComment(
+    param(req, "id"),
+    param(req, "postId"),
+    req.userId!,
+    input.body,
+  );
+  res.status(201).json({ success: true, data: comment });
+}
+
+export async function deleteComment(req: Request, res: Response) {
+  await clubsService.deleteComment(
+    param(req, "id"),
+    param(req, "postId"),
+    param(req, "commentId"),
+    req.userId!,
+  );
+  res.status(200).json({ success: true, data: null });
 }

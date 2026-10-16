@@ -10,6 +10,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { Avatar, authorName } from "@/components/clubs/Avatar";
+import { PostComments } from "@/components/clubs/PostComments";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -285,11 +286,11 @@ export function ClubFeed({
                   src={post.imageUrl}
                   alt=""
                   loading="lazy"
-                  className="h-full max-h-136 w-full bg-black object-cover md:max-h-none"
+                  className="h-full max-h-160 w-full bg-black object-cover"
                 />
               )}
 
-              <div className="flex min-h-0 flex-col">
+              <div className="flex min-h-0 flex-col md:max-h-160">
                 <div className="flex items-center gap-3 border-b border-gray-100 p-4">
                   <Avatar author={post.author} />
                   <div className="min-w-0 flex-1">
@@ -343,7 +344,19 @@ export function ClubFeed({
                   )}
                 </div>
 
-                <div className="flex-1 p-4">
+                <PostComments
+                  clubId={clubId}
+                  postId={post.id}
+                  initialCount={post.commentCount}
+                  onCountChange={(delta) =>
+                    setPosts((current) =>
+                      current.map((p) =>
+                        p.id === post.id ? { ...p, commentCount: p.commentCount + delta } : p,
+                      ),
+                    )
+                  }
+                  caption={
+                    <>
                   {isAnnouncement && (
                     <span className="mb-2 inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-secondary">
                       📣 Announcement
@@ -357,8 +370,9 @@ export function ClubFeed({
                       {post.body}
                     </p>
                   )}
-                </div>
-
+                    </>
+                  }
+                  actions={
                 <div className="flex items-center gap-3 border-t border-gray-100 px-4 py-3">
                   <button
                     type="button"
@@ -377,7 +391,12 @@ export function ClubFeed({
                   <span className="text-sm font-semibold text-secondary">
                     {post.likeCount} like{post.likeCount === 1 ? "" : "s"}
                   </span>
+                  <span className="text-sm text-gray-500">
+                    {post.commentCount} comment{post.commentCount === 1 ? "" : "s"}
+                  </span>
                 </div>
+                  }
+                />
               </div>
             </li>
           );

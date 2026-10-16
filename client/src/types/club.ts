@@ -30,6 +30,7 @@ export interface ClubPost {
   imageUrl: string | null;
   likeCount: number;
   likedByMe: boolean;
+  commentCount: number;
   createdAt: string;
   author: ClubAuthor;
 }
@@ -74,4 +75,11 @@ export interface InvitePreview {
   memberCount: number;
   email: string | null;
   alreadyMember: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: ClubAuthor;
 }

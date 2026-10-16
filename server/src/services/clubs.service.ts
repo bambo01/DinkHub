@@ -40,6 +40,7 @@ export interface ClubPost {
   imageUrl: string | null;
   likeCount: number;
   likedByMe: boolean;
+  commentCount: number;
   createdAt: string;
   author: Author;
 }
@@ -278,12 +279,13 @@ interface PostRow {
   created_at: string;
   users: UserEmbed | null;
   club_post_likes: { user_id: string }[];
+  club_post_comments: { count: number }[];
 }
 
 // `users!user_id` pins the embed to the author FK: club_posts also reaches
 // users through club_post_likes, which makes a bare `users(...)` ambiguous.
 const POST_COLUMNS =
-  "id, user_id, kind, body, pinned, image_url, created_at, users!user_id(id, full_name, avatar_url), club_post_likes(user_id)";
+  "id, user_id, kind, body, pinned, image_url, created_at, users!user_id(id, full_name, avatar_url), club_post_likes(user_id), club_post_comments(count)";
 const IMAGE_BUCKET = "listing-images";
 
 function mapPost(row: PostRow, userId: string): ClubPost {
@@ -295,6 +297,7 @@ function mapPost(row: PostRow, userId: string): ClubPost {
     imageUrl: row.image_url,
     likeCount: row.club_post_likes.length,
     likedByMe: row.club_post_likes.some((like) => like.user_id === userId),
+    commentCount: row.club_post_comments[0]?.count ?? 0,
     createdAt: row.created_at,
     author: mapAuthor(row.users, row.user_id),
   };
@@ -724,4 +727,108 @@ export async function updateClubImage(
 
   if (error) throw new AppError("Failed to save image", 500);
   return getClub(clubId, userId);
+}
+
+// ---------------------------------------------------------------------------
+// Post comments
+// ---------------------------------------------------------------------------
+
+export interface PostComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: Author;
+}
+
+interface CommentRow {
+  id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  users: UserEmbed | null;
+}
+
+const COMMENT_COLUMNS = `id, user_id, body, created_at, ${AUTHOR_EMBED}`;
+
+function mapComment(row: CommentRow): PostComment {
+  return {
+    id: row.id,
+    body: row.body,
+    createdAt: row.created_at,
+    author: mapAuthor(row.users, row.user_id),
+  };
+}
+
+async function assertPostInClub(clubId: string, postId: string) {
+  const { data } = await supabase
+    .from("club_posts")
+    .select("id")
+    .eq("id", postId)
+    .eq("club_id", clubId)
+    .maybeSingle();
+
+  if (!data) throw new AppError("Post not found", 404);
+}
+
+export async function listComments(
+  clubId: string,
+  postId: string,
+  userId: string,
+): Promise<PostComment[]> {
+  await assertMember(clubId, userId);
+  await assertPostInClub(clubId, postId);
+
+  const { data, error } = await supabase
+    .from("club_post_comments")
+    .select(COMMENT_COLUMNS)
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) throw new AppError("Failed to load comments", 500);
+  return ((data ?? []) as unknown as CommentRow[]).map(mapComment);
+}
+
+export async function createComment(
+  clubId: string,
+  postId: string,
+  userId: string,
+  body: string,
+): Promise<PostComment> {
+  await assertMember(clubId, userId);
+  await assertPostInClub(clubId, postId);
+
+  const { data, error } = await supabase
+    .from("club_post_comments")
+    .insert({ post_id: postId, user_id: userId, body })
+    .select(COMMENT_COLUMNS)
+    .single();
+
+  if (error || !data) throw new AppError("Failed to post comment", 500);
+  return mapComment(data as unknown as CommentRow);
+}
+
+export async function deleteComment(
+  clubId: string,
+  postId: string,
+  commentId: string,
+  userId: string,
+): Promise<void> {
+  const { isAdmin } = await assertMember(clubId, userId);
+  await assertPostInClub(clubId, postId);
+
+  const { data: comment } = await supabase
+    .from("club_post_comments")
+    .select("user_id")
+    .eq("id", commentId)
+    .eq("post_id", postId)
+    .maybeSingle();
+
+  if (!comment) throw new AppError("Comment not found", 404);
+  if (!isAdmin && comment.user_id !== userId) {
+    throw new AppError("You can only delete your own comments", 403);
+  }
+
+  const { error } = await supabase.from("club_post_comments").delete().eq("id", commentId);
+  if (error) throw new AppError("Failed to delete comment", 500);
 }

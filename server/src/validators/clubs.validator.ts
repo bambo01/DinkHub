@@ -59,3 +59,7 @@ export type CreateClubInput = z.infer<typeof createClubSchema>;
 export type UpdateClubInput = z.infer<typeof updateClubSchema>;
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+
+export const createCommentSchema = z.object({
+  body: z.string().trim().min(1, "Write a comment first").max(500),
+});

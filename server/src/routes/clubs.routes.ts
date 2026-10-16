@@ -3,10 +3,12 @@ import rateLimit from "express-rate-limit";
 import {
   acceptInvite,
   createClub,
+  createComment,
   createInvite,
   createPost,
   createSession,
   deleteClub,
+  deleteComment,
   deletePost,
   deleteSession,
   getClub,
@@ -14,6 +16,7 @@ import {
   leaveClub,
   likePost,
   listClubs,
+  listComments,
   listInvites,
   listMembers,
   listMessages,
@@ -71,6 +74,9 @@ router.post("/:id/posts", imageUpload.single("image"), createPost);
 router.delete("/:id/posts/:postId", deletePost);
 router.patch("/:id/posts/:postId/pin", requireAdmin, pinPost);
 router.put("/:id/posts/:postId/like", likePost);
+router.get("/:id/posts/:postId/comments", listComments);
+router.post("/:id/posts/:postId/comments", createComment);
+router.delete("/:id/posts/:postId/comments/:commentId", deleteComment);
 
 router.get("/:id/members", listMembers);
 
