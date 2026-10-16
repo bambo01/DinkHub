@@ -123,3 +123,38 @@ export async function sendOpenPlayConfirmationEmail(
     );
   }
 }
+
+export async function sendClubInviteEmail(
+  toEmail: string,
+  clubName: string,
+  link: string,
+): Promise<void> {
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    console.log(
+      `Email not configured (BREVO_API_KEY/BREVO_SENDER_EMAIL unset) — skipping club invite email to ${toEmail}`,
+    );
+    return;
+  }
+
+  try {
+    const html = `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; color: #062e40;">
+        <h1 style="font-size: 20px;">You're invited to ${clubName}</h1>
+        <p>You've been invited to join the <strong>${clubName}</strong> club on DinkHub.</p>
+        <p><a href="${link}" style="display: inline-block; background: #9ed00f; color: #062e40; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Accept invitation</a></p>
+        <p style="color: #667; font-size: 13px;">This link works for the email address it was sent to and expires in 7 days.</p>
+        <p style="margin-top: 24px; color: #999; font-size: 12px;">DinkHub</p>
+      </div>
+    `;
+
+    await brevo.post("/smtp/email", {
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: toEmail }],
+      subject: `You're invited to join ${clubName}`,
+      htmlContent: html,
+    });
+  } catch (err) {
+    // Best-effort — the admin still has the invite link to share manually.
+    console.error(`Failed to send club invite email to ${toEmail}:`, err);
+  }
+}

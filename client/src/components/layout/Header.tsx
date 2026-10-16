@@ -8,7 +8,7 @@ import {
   FiHome,
   FiInfo,
   FiGrid,
-  FiMail,
+  FiMessageCircle,
   FiUsers,
   FiUserPlus,
   FiLogIn,
@@ -27,8 +27,8 @@ const navLinks = [
   { label: "Home", href: "/", icon: FiHome },
   { label: "About Us", href: "/#about", icon: FiInfo },
   { label: "Courts", href: "/courts", icon: FiGrid },
-  { label: "Contact", href: "/#contact", icon: FiMail },
   { label: "Open Play", href: "/open-play", icon: FiUsers },
+  { label: "Clubs", href: "/clubs", icon: FiMessageCircle },
 ];
 
 const mobileAccountLinks = [
@@ -55,15 +55,20 @@ function getActiveHomeSection(): HomeSection {
   // on a typical 1080p screen it easily is — the page runs out of room to
   // scroll before the threshold check below would ever fire.
   const scrolledToBottom =
-    window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    window.innerHeight + window.scrollY >=
+    document.documentElement.scrollHeight - 2;
   if (scrolledToBottom && document.getElementById("contact")) return "contact";
 
   // Matches the sticky header height (h-20) plus a little slack, so a
   // section only counts as active once it's actually visible below it.
   const threshold = 96;
-  const contactTop = document.getElementById("contact")?.getBoundingClientRect().top;
+  const contactTop = document
+    .getElementById("contact")
+    ?.getBoundingClientRect().top;
   if (contactTop !== undefined && contactTop <= threshold) return "contact";
-  const aboutTop = document.getElementById("about")?.getBoundingClientRect().top;
+  const aboutTop = document
+    .getElementById("about")
+    ?.getBoundingClientRect().top;
   if (aboutTop !== undefined && aboutTop <= threshold) return "about";
   return "home";
 }
@@ -72,7 +77,8 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [activeHomeSection, setActiveHomeSection] = useState<HomeSection>("home");
+  const [activeHomeSection, setActiveHomeSection] =
+    useState<HomeSection>("home");
 
   // setActiveHomeSection runs synchronously on mount/pathname-change before
   // the listeners attach, which react-hooks/set-state-in-effect flags on
@@ -98,8 +104,10 @@ export function Header() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function isLinkActive(href: string) {
-    if (href === "/#about") return pathname === "/" && activeHomeSection === "about";
-    if (href === "/#contact") return pathname === "/" && activeHomeSection === "contact";
+    if (href === "/#about")
+      return pathname === "/" && activeHomeSection === "about";
+    if (href === "/#contact")
+      return pathname === "/" && activeHomeSection === "contact";
     if (href === "/") return pathname === "/" && activeHomeSection === "home";
     return pathname === href;
   }

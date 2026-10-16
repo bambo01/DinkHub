@@ -7,6 +7,7 @@ import paymentsRoutes from "./payments.routes.js";
 import openPlayRoutes from "./open-play.routes.js";
 import verifyRoutes from "./verify.routes.js";
 import loyaltyRoutes from "./loyalty.routes.js";
+import clubsRoutes from "./clubs.routes.js";
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use("/payments", paymentsRoutes);
 router.use("/open-play", openPlayRoutes);
 router.use("/verify", verifyRoutes);
 router.use("/loyalty", loyaltyRoutes);
+router.use("/clubs", clubsRoutes);
 
 export default router;

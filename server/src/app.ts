@@ -29,10 +29,16 @@ app.use(
 // doesn't exhaust it. Brute-force protection on login/register lives in a
 // separate, much stricter limiter on those specific routes instead of
 // sharing this budget with unrelated reads.
+//
+// Club chat is exempt: it's polled every few seconds and has its own
+// per-minute limiter in clubs.routes.ts.
+const CHAT_PATH = /^\/api\/clubs\/[^/]+\/messages\/?$/;
+
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
+    skip: (req) => CHAT_PATH.test(req.path),
     message: {
       success: false,
       message: "Too many requests. Please wait a moment and try again.",
